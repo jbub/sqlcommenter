@@ -10,14 +10,14 @@ const (
 	commentEnd   = "*/"
 )
 
-func Comment(query string, opts ...Option) string {
+func Comment(ctx context.Context, query string, opts ...Option) string {
 	if len(opts) == 0 {
 		return query
 	}
 	if strings.Contains(query, commentStart) {
 		return query
 	}
-	return newCommenter(opts...).comment(context.Background(), query)
+	return newCommenter(opts...).comment(ctx, query)
 }
 
 func newCommenter(opts ...Option) *commenter {
@@ -37,7 +37,7 @@ func (c *commenter) comment(ctx context.Context, query string) string {
 	if len(attrs) == 0 {
 		return query
 	}
-	return query + " " + commentStart + " " + attrs.Encode() + " " + commentEnd
+	return query + " " + commentStart + " " + attrs.encode() + " " + commentEnd
 }
 
 func (c *commenter) attrs(ctx context.Context) Attrs {

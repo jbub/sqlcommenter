@@ -1,6 +1,7 @@
 package sqlcommenter
 
 import (
+	"context"
 	"testing"
 )
 
@@ -45,7 +46,7 @@ func TestComment(t *testing.T) {
 
 	for _, cs := range cases {
 		t.Run(cs.name, func(t *testing.T) {
-			got := Comment(cs.query, cs.opts...)
+			got := Comment(context.Background(), cs.query, cs.opts...)
 			if want := cs.want; want != got {
 				t.Fatalf("got '%v', want '%v'", got, want)
 			}
