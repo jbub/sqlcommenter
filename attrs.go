@@ -24,7 +24,13 @@ type Attr struct {
 
 type Attrs map[string]string
 
-func (a Attrs) Encode() string {
+func (a Attrs) Update(other Attrs) {
+	for k, v := range other {
+		a[k] = v
+	}
+}
+
+func (a Attrs) encode() string {
 	total := len(a)
 	keys := make([]string, 0, total)
 	for k := range a {
@@ -42,12 +48,6 @@ func (a Attrs) Encode() string {
 		}
 	}
 	return b.String()
-}
-
-func (a Attrs) Update(other Attrs) {
-	for k, v := range other {
-		a[k] = v
-	}
 }
 
 func encodeKey(k string) string {
