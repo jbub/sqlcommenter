@@ -2,6 +2,7 @@ package sqlcommenter
 
 import (
 	"context"
+	"sync"
 	"testing"
 )
 
@@ -51,5 +52,42 @@ func TestComment(t *testing.T) {
 				t.Fatalf("got '%v', want '%v'", got, want)
 			}
 		})
+	}
+}
+
+func TestCommentConcurrent(t *testing.T) {
+	var wg sync.WaitGroup
+
+	ctx := context.Background()
+	cmt := newCommenter(WithAttrs(map[string]string{
+		"key":  "value",
+		"2key": "value 33",
+		"key3": "44  value",
+	}))
+
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			cmt.comment(ctx, "SELECT * FROM my_table WHERE column IS NOT NULL")
+		}()
+	}
+
+	wg.Wait()
+}
+
+func BenchmarkComment(b *testing.B) {
+	b.ReportAllocs()
+	b.SetBytes(2)
+
+	ctx := context.Background()
+	cmt := newCommenter(WithAttrs(map[string]string{
+		"key":  "value",
+		"2key": "value 33",
+		"key3": "44  value",
+	}))
+
+	for i := 0; i < b.N; i++ {
+		cmt.comment(ctx, "SELECT * FROM my_table WHERE column IS NOT NULL")
 	}
 }

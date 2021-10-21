@@ -1,8 +1,8 @@
 package sqlcommenter
 
 import (
+	"bytes"
 	"net/url"
-	"sort"
 	"strings"
 )
 
@@ -30,24 +30,24 @@ func (a Attrs) Update(other Attrs) {
 	}
 }
 
-func (a Attrs) encode() string {
+func (a Attrs) encode(b *bytes.Buffer) {
 	total := len(a)
 	keys := make([]string, 0, total)
 	for k := range a {
 		keys = append(keys, k)
 	}
-	sort.Strings(keys)
+	sortKeys(keys)
 
-	var b strings.Builder
 	for i, key := range keys {
 		b.WriteString(encodeKey(key))
 		b.WriteByte('=')
+		b.WriteByte('\'')
 		b.WriteString(encodeValue(a[key]))
+		b.WriteByte('\'')
 		if i < total-1 {
 			b.WriteByte(',')
 		}
 	}
-	return b.String()
 }
 
 func encodeKey(k string) string {
@@ -55,5 +55,21 @@ func encodeKey(k string) string {
 }
 
 func encodeValue(v string) string {
-	return "'" + strings.ReplaceAll(url.PathEscape(v), "+", "%20") + "'"
+	return strings.ReplaceAll(url.PathEscape(v), "+", "%20")
+}
+
+// sortKeys implements a simple insertion sort on string slice.
+// We save one alloc by not using sort.Strings.
+func sortKeys(keys []string) {
+	for i := 1; i < len(keys); i++ {
+		if keys[i] < keys[i-1] {
+			j := i - 1
+			temp := keys[i]
+			for j >= 0 && keys[j] > temp {
+				keys[j+1] = keys[j]
+				j--
+			}
+			keys[j+1] = temp
+		}
+	}
 }

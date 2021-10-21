@@ -1,8 +1,10 @@
 package sqlcommenter
 
 import (
+	"bytes"
 	"context"
 	"strings"
+	"sync"
 )
 
 const (
@@ -37,16 +39,42 @@ func (c *commenter) comment(ctx context.Context, query string) string {
 	if len(attrs) == 0 {
 		return query
 	}
-	return query + " " + commentStart + " " + attrs.encode() + " " + commentEnd
+
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		bufPool.Put(buf)
+	}()
+
+	buf.WriteString(query)
+	buf.WriteByte(' ')
+	buf.WriteString(commentStart)
+	buf.WriteByte(' ')
+
+	attrs.encode(buf)
+
+	buf.WriteByte(' ')
+	buf.WriteString(commentEnd)
+	return buf.String()
 }
 
 func (c *commenter) attrs(ctx context.Context) Attrs {
-	if len(c.providers) == 0 {
+	switch len(c.providers) {
+	case 0:
 		return nil
+	case 1:
+		return c.providers[0].GetAttrs(ctx)
+	default:
+		attrs := make(Attrs)
+		for _, prov := range c.providers {
+			attrs.Update(prov.GetAttrs(ctx))
+		}
+		return attrs
 	}
-	attrs := make(Attrs)
-	for _, prov := range c.providers {
-		attrs.Update(prov.GetAttrs(ctx))
-	}
-	return attrs
+}
+
+var bufPool = sync.Pool{
+	New: func() interface{} {
+		return &bytes.Buffer{}
+	},
 }

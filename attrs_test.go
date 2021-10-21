@@ -1,6 +1,7 @@
 package sqlcommenter
 
 import (
+	"bytes"
 	"testing"
 )
 
@@ -33,25 +34,12 @@ func TestAttrsEncode(t *testing.T) {
 
 	for _, cs := range cases {
 		t.Run(cs.name, func(t *testing.T) {
-			got := cs.attrs.encode()
+			var b bytes.Buffer
+			cs.attrs.encode(&b)
+			got := b.String()
 			if want := cs.want; want != got {
 				t.Errorf("got '%v', want '%v'", got, want)
 			}
 		})
-	}
-}
-
-func BenchmarkAttrsEncode(b *testing.B) {
-	b.ReportAllocs()
-	b.SetBytes(2)
-
-	attrs := Attrs(map[string]string{
-		"key":  "value",
-		"2key": "value 33",
-		"key3": "44  value",
-	})
-
-	for i := 0; i < b.N; i++ {
-		attrs.encode()
 	}
 }
