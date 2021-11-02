@@ -77,15 +77,16 @@ func TestCommentConcurrent(t *testing.T) {
 }
 
 func BenchmarkComment(b *testing.B) {
-	b.ReportAllocs()
-	b.SetBytes(2)
-
 	ctx := context.Background()
 	cmt := newCommenter(WithAttrs(map[string]string{
 		"key":  "value",
 		"2key": "value 33",
 		"key3": "44  value",
 	}))
+
+	b.ReportAllocs()
+	b.SetBytes(2)
+	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		cmt.comment(ctx, "SELECT * FROM my_table WHERE column IS NOT NULL")
