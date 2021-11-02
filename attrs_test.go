@@ -24,11 +24,11 @@ func TestAttrsEncode(t *testing.T) {
 		{
 			name: "multiple attrs",
 			attrs: map[string]string{
-				"key":  "value",
-				"2key": "value 33",
-				"key3": "44  value",
+				"key":  "DROP TABLE FOO",
+				"2key": "/param first",
+				"name": "1234",
 			},
-			want: "2key='value%2033',key='value',key3='44%20%20value'",
+			want: "2key='%2Fparam%20first',key='DROP%20TABLE%20FOO',name='1234'",
 		},
 	}
 

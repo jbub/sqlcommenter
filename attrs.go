@@ -2,8 +2,6 @@ package sqlcommenter
 
 import (
 	"bytes"
-	"net/url"
-	"strings"
 )
 
 func AttrPairs(pairs ...string) Attrs {
@@ -39,23 +37,18 @@ func (a Attrs) encode(b *bytes.Buffer) {
 	sortKeys(keys)
 
 	for i, key := range keys {
-		b.WriteString(encodeKey(key))
+		writeQueryEscape(key, b)
+
 		b.WriteByte('=')
 		b.WriteByte('\'')
-		b.WriteString(encodeValue(a[key]))
+
+		writePathEscape(a[key], b)
+
 		b.WriteByte('\'')
 		if i < total-1 {
 			b.WriteByte(',')
 		}
 	}
-}
-
-func encodeKey(k string) string {
-	return url.QueryEscape(k)
-}
-
-func encodeValue(v string) string {
-	return strings.ReplaceAll(url.PathEscape(v), "+", "%20")
 }
 
 // sortKeys implements a simple insertion sort on string slice.
