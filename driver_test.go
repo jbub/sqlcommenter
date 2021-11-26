@@ -86,31 +86,51 @@ func TestWrapDriver(t *testing.T) {
 		},
 	}
 
+	drivers := []struct {
+		name      string
+		newDriver func(conn *mockConn) driver.Driver
+	}{
+		{
+			name: "driver",
+			newDriver: func(conn *mockConn) driver.Driver {
+				return &mockDriver{conn: conn}
+			},
+		},
+		{
+			name: "driverctx",
+			newDriver: func(conn *mockConn) driver.Driver {
+				return &mockDriverContext{conn: conn}
+			},
+		},
+	}
+
 	for i, cs := range cases {
-		t.Run(cs.name, func(t *testing.T) {
-			var ctx context.Context
-			if cs.makeCtx != nil {
-				ctx = cs.makeCtx()
-			} else {
-				ctx = context.Background()
-			}
+		for j, drv := range drivers {
+			t.Run(cs.name+" "+drv.name, func(t *testing.T) {
+				var ctx context.Context
+				if cs.makeCtx != nil {
+					ctx = cs.makeCtx()
+				} else {
+					ctx = context.Background()
+				}
 
-			conn := &mockConn{}
-			orig := &mockDriver{conn: conn}
-			drv := WrapDriver(orig, cs.options...)
+				conn := &mockConn{}
+				orig := drv.newDriver(conn)
+				drv := WrapDriver(orig, cs.options...)
 
-			driverName := fmt.Sprintf("driver-%v", i)
-			sql.Register(driverName, drv)
+				driverName := fmt.Sprintf("driver-%v-%v", i, j)
+				sql.Register(driverName, drv)
 
-			db, err := sql.Open(driverName, "")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer db.Close()
+				db, err := sql.Open(driverName, "")
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer db.Close()
 
-			cs.perform(ctx, db)
-			cs.assert(t, conn)
-		})
+				cs.perform(ctx, db)
+				cs.assert(t, conn)
+			})
+		}
 	}
 }
 
@@ -126,15 +146,15 @@ func userKeyFromContext(ctx context.Context) string {
 	return ctx.Value(contextUserKey).(string)
 }
 
-type mockDriver struct {
+type mockDriverContext struct {
 	conn *mockConn
 }
 
-func (m *mockDriver) Open(name string) (driver.Conn, error) {
+func (m *mockDriverContext) Open(name string) (driver.Conn, error) {
 	return m.conn, nil
 }
 
-func (m *mockDriver) OpenConnector(name string) (driver.Connector, error) {
+func (m *mockDriverContext) OpenConnector(name string) (driver.Connector, error) {
 	return &mockConnector{
 		drv:  m,
 		conn: m.conn,
@@ -178,7 +198,7 @@ func (m *mockConn) assertExecContext(t *testing.T, query string) {
 }
 
 type mockConnector struct {
-	drv  *mockDriver
+	drv  *mockDriverContext
 	conn *mockConn
 }
 
@@ -188,4 +208,12 @@ func (m *mockConnector) Connect(ctx context.Context) (driver.Conn, error) {
 
 func (m *mockConnector) Driver() driver.Driver {
 	return m.drv
+}
+
+type mockDriver struct {
+	conn *mockConn
+}
+
+func (m *mockDriver) Open(name string) (driver.Conn, error) {
+	return m.conn, nil
 }

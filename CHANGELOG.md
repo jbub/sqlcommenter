@@ -1,3 +1,7 @@
+## v0.2.0
+
+- Add support for drivers which do not implement `driver.DriverContext`.
+
 ## v0.1.1
 
 - Optimize `Attrs` encoding by reducing allocations.

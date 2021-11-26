@@ -26,11 +26,16 @@ func (d *commentDriver) Open(name string) (driver.Conn, error) {
 }
 
 func (d *commentDriver) OpenConnector(name string) (driver.Connector, error) {
-	ctr, err := d.drv.(driver.DriverContext).OpenConnector(name)
+	drvCtx, ok := d.drv.(driver.DriverContext)
+	if !ok {
+		return &dsnConnector{dsn: name, drv: d}, nil
+	}
+
+	ctr, err := drvCtx.OpenConnector(name)
 	if err != nil {
 		return nil, err
 	}
-	return newConnector(ctr, d), err
+	return newConnector(ctr, d), nil
 }
 
 func newConnector(ctr driver.Connector, drv *commentDriver) *connector {
@@ -54,5 +59,18 @@ func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
 }
 
 func (c *connector) Driver() driver.Driver {
+	return c.drv
+}
+
+type dsnConnector struct {
+	dsn string
+	drv *commentDriver
+}
+
+func (c *dsnConnector) Connect(context.Context) (driver.Conn, error) {
+	return c.drv.Open(c.dsn)
+}
+
+func (c *dsnConnector) Driver() driver.Driver {
 	return c.drv
 }
