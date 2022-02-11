@@ -5,6 +5,7 @@ import (
 	"database/sql/driver"
 )
 
+// WrapDriver wraps sql driver with sqlcommenter support.
 func WrapDriver(drv driver.Driver, opts ...Option) driver.Driver {
 	return &commentDriver{
 		drv: drv,
@@ -28,7 +29,7 @@ func (d *commentDriver) Open(name string) (driver.Conn, error) {
 func (d *commentDriver) OpenConnector(name string) (driver.Connector, error) {
 	drvCtx, ok := d.drv.(driver.DriverContext)
 	if !ok {
-		return &dsnConnector{dsn: name, drv: d}, nil
+		return newDSNConnector(name, d), nil
 	}
 
 	ctr, err := drvCtx.OpenConnector(name)
@@ -60,6 +61,13 @@ func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
 
 func (c *connector) Driver() driver.Driver {
 	return c.drv
+}
+
+func newDSNConnector(dsn string, drv *commentDriver) *dsnConnector {
+	return &dsnConnector{
+		dsn: dsn,
+		drv: drv,
+	}
 }
 
 type dsnConnector struct {

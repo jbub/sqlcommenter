@@ -5,8 +5,6 @@
 
 Go implementation of https://google.github.io/sqlcommenter/.
 
-Public API is not stable, expect breaking changes.
-
 ## Usage with pgx stdlib driver
 
 ```go

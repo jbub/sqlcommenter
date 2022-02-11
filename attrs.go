@@ -4,6 +4,7 @@ import (
 	"bytes"
 )
 
+// AttrPairs builds Attrs from multiple key value pairs.
 func AttrPairs(pairs ...string) Attrs {
 	if len(pairs)%2 == 1 {
 		panic("got odd number of pairs")
@@ -15,13 +16,16 @@ func AttrPairs(pairs ...string) Attrs {
 	return attrs
 }
 
+// Attr represents attribute with key and value.
 type Attr struct {
 	Key   string
 	Value string
 }
 
+// Attrs wrap map of attributes.
 type Attrs map[string]string
 
+// Update updates map from other Attrs.
 func (a Attrs) Update(other Attrs) {
 	for k, v := range other {
 		a[k] = v

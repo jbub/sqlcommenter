@@ -12,6 +12,7 @@ const (
 	commentEnd   = "*/"
 )
 
+// Comment adds comments to query using provided options.
 func Comment(ctx context.Context, query string, opts ...Option) string {
 	if len(opts) == 0 {
 		return query
