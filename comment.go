@@ -50,11 +50,7 @@ func (c *commenter) comment(ctx context.Context, query string) string {
 	buf.WriteString(query)
 	buf.WriteByte(' ')
 	buf.WriteString(commentStart)
-	buf.WriteByte(' ')
-
 	attrs.encode(buf)
-
-	buf.WriteByte(' ')
 	buf.WriteString(commentEnd)
 	return buf.String()
 }

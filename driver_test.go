@@ -32,7 +32,7 @@ func TestWrapDriver(t *testing.T) {
 				db.QueryContext(ctx, "SELECT 1")
 			},
 			assert: func(t *testing.T, conn *mockConn) {
-				conn.assertQueryContext(t, "SELECT 1 /* key='value',key2='value%202' */")
+				conn.assertQueryContext(t, "SELECT 1 /*key='value',key2='value%202'*/")
 			},
 		},
 		{
@@ -47,7 +47,7 @@ func TestWrapDriver(t *testing.T) {
 				db.QueryContext(ctx, "SELECT 1")
 			},
 			assert: func(t *testing.T, conn *mockConn) {
-				conn.assertQueryContext(t, "SELECT 1 /* user-key='my-key' */")
+				conn.assertQueryContext(t, "SELECT 1 /*user-key='my-key'*/")
 			},
 		},
 		{
@@ -66,7 +66,7 @@ func TestWrapDriver(t *testing.T) {
 				db.ExecContext(ctx, "UPDATE users SET name = 'joe'")
 			},
 			assert: func(t *testing.T, conn *mockConn) {
-				conn.assertExecContext(t, "UPDATE users SET name = 'joe' /* key='value' */")
+				conn.assertExecContext(t, "UPDATE users SET name = 'joe' /*key='value'*/")
 			},
 		},
 		{
@@ -81,7 +81,7 @@ func TestWrapDriver(t *testing.T) {
 				db.ExecContext(ctx, "UPDATE users SET name = 'joe'")
 			},
 			assert: func(t *testing.T, conn *mockConn) {
-				conn.assertExecContext(t, "UPDATE users SET name = 'joe' /* user-key='my-key' */")
+				conn.assertExecContext(t, "UPDATE users SET name = 'joe' /*user-key='my-key'*/")
 			},
 		},
 	}

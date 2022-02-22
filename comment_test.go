@@ -35,13 +35,13 @@ func TestComment(t *testing.T) {
 			name:  "query with single attr",
 			query: "SELECT 1",
 			opts:  []Option{WithAttrPairs("key", "value")},
-			want:  "SELECT 1 /* key='value' */",
+			want:  "SELECT 1 /*key='value'*/",
 		},
 		{
 			name:  "query with multiple attrs",
 			query: "SELECT 1",
 			opts:  []Option{WithAttrPairs("key", "1value", "key2", "  value 2")},
-			want:  "SELECT 1 /* key='1value',key2='%20%20value%202' */",
+			want:  "SELECT 1 /*key='1value',key2='%20%20value%202'*/",
 		},
 	}
 
