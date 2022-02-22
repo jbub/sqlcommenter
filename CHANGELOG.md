@@ -1,3 +1,7 @@
+## v0.3.0
+
+- Do not prefix/suffix comment with whitespace.
+
 ## v0.2.1
 
 - Bump license year.

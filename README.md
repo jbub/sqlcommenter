@@ -55,6 +55,6 @@ func main() {
     }
     defer rows.Close()
     
-    // will produce the following query: SELECT 1 /* application='hello-app',user-id='22' */
+    // will produce the following query: SELECT 1 /*application='hello-app',user-id='22'*/
 }
 ```
