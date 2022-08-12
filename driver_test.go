@@ -13,26 +13,26 @@ func TestWrapDriver(t *testing.T) {
 		name    string
 		makeCtx func() context.Context
 		options []Option
-		perform func(context.Context, *sql.DB)
+		perform func(*testing.T, context.Context, *sql.DB)
 		assert  func(*testing.T, *mockConn)
 	}{
 		{
 			name: "QueryContext no attrs",
-			perform: func(ctx context.Context, db *sql.DB) {
+			perform: func(t *testing.T, ctx context.Context, db *sql.DB) {
 				db.QueryContext(ctx, "SELECT 1")
 			},
 			assert: func(t *testing.T, conn *mockConn) {
-				conn.assertQueryContext(t, "SELECT 1")
+				conn.assertQueryContext(t, "SELECT 1", 0)
 			},
 		},
 		{
 			name:    "QueryContext with attrs",
 			options: []Option{WithAttrPairs("key", "value"), WithAttrPairs("key2", "value 2")},
-			perform: func(ctx context.Context, db *sql.DB) {
+			perform: func(t *testing.T, ctx context.Context, db *sql.DB) {
 				db.QueryContext(ctx, "SELECT 1")
 			},
 			assert: func(t *testing.T, conn *mockConn) {
-				conn.assertQueryContext(t, "SELECT 1 /*key='value',key2='value%202'*/")
+				conn.assertQueryContext(t, "SELECT 1 /*key='value',key2='value%202'*/", 0)
 			},
 		},
 		{
@@ -43,30 +43,30 @@ func TestWrapDriver(t *testing.T) {
 			makeCtx: func() context.Context {
 				return withUserKey(context.Background(), "my-key")
 			},
-			perform: func(ctx context.Context, db *sql.DB) {
+			perform: func(t *testing.T, ctx context.Context, db *sql.DB) {
 				db.QueryContext(ctx, "SELECT 1")
 			},
 			assert: func(t *testing.T, conn *mockConn) {
-				conn.assertQueryContext(t, "SELECT 1 /*user-key='my-key'*/")
+				conn.assertQueryContext(t, "SELECT 1 /*user-key='my-key'*/", 0)
 			},
 		},
 		{
 			name: "ExecContext no attrs",
-			perform: func(ctx context.Context, db *sql.DB) {
+			perform: func(t *testing.T, ctx context.Context, db *sql.DB) {
 				db.ExecContext(ctx, "UPDATE users SET name = 'joe'")
 			},
 			assert: func(t *testing.T, conn *mockConn) {
-				conn.assertExecContext(t, "UPDATE users SET name = 'joe'")
+				conn.assertExecContext(t, "UPDATE users SET name = 'joe'", 0)
 			},
 		},
 		{
 			name:    "ExecContext with attrs",
 			options: []Option{WithAttrPairs("key", "value")},
-			perform: func(ctx context.Context, db *sql.DB) {
+			perform: func(t *testing.T, ctx context.Context, db *sql.DB) {
 				db.ExecContext(ctx, "UPDATE users SET name = 'joe'")
 			},
 			assert: func(t *testing.T, conn *mockConn) {
-				conn.assertExecContext(t, "UPDATE users SET name = 'joe' /*key='value'*/")
+				conn.assertExecContext(t, "UPDATE users SET name = 'joe' /*key='value'*/", 0)
 			},
 		},
 		{
@@ -77,11 +77,53 @@ func TestWrapDriver(t *testing.T) {
 			makeCtx: func() context.Context {
 				return withUserKey(context.Background(), "my-key")
 			},
-			perform: func(ctx context.Context, db *sql.DB) {
+			perform: func(t *testing.T, ctx context.Context, db *sql.DB) {
 				db.ExecContext(ctx, "UPDATE users SET name = 'joe'")
 			},
 			assert: func(t *testing.T, conn *mockConn) {
-				conn.assertExecContext(t, "UPDATE users SET name = 'joe' /*user-key='my-key'*/")
+				conn.assertExecContext(t, "UPDATE users SET name = 'joe' /*user-key='my-key'*/", 0)
+			},
+		},
+		{
+			name: "QueryContext attrs from context in transaction",
+			options: []Option{WithAttrFunc(func(ctx context.Context) Attrs {
+				return AttrPairs("user-key", userKeyFromContext(ctx))
+			})},
+			makeCtx: func() context.Context {
+				return withUserKey(context.Background(), "my-key")
+			},
+			perform: func(t *testing.T, ctx context.Context, db *sql.DB) {
+				tx, err := db.Begin()
+				assertNoError(t, err)
+				defer tx.Commit()
+
+				tx.QueryContext(ctx, "SELECT 1")
+				tx.QueryContext(ctx, "SELECT 2")
+			},
+			assert: func(t *testing.T, conn *mockConn) {
+				conn.assertQueryContext(t, "SELECT 1 /*user-key='my-key'*/", 0)
+				conn.assertQueryContext(t, "SELECT 2 /*user-key='my-key'*/", 1)
+			},
+		},
+		{
+			name: "ExecContext attrs from context in transaction",
+			options: []Option{WithAttrFunc(func(ctx context.Context) Attrs {
+				return AttrPairs("user-key", userKeyFromContext(ctx))
+			})},
+			makeCtx: func() context.Context {
+				return withUserKey(context.Background(), "my-key")
+			},
+			perform: func(t *testing.T, ctx context.Context, db *sql.DB) {
+				tx, err := db.Begin()
+				assertNoError(t, err)
+				defer tx.Commit()
+
+				tx.ExecContext(ctx, "UPDATE users SET name = 'joe'")
+				tx.ExecContext(ctx, "UPDATE users SET name = 'doe'")
+			},
+			assert: func(t *testing.T, conn *mockConn) {
+				conn.assertExecContext(t, "UPDATE users SET name = 'joe' /*user-key='my-key'*/", 0)
+				conn.assertExecContext(t, "UPDATE users SET name = 'doe' /*user-key='my-key'*/", 1)
 			},
 		},
 	}
@@ -122,12 +164,10 @@ func TestWrapDriver(t *testing.T) {
 				sql.Register(driverName, drv)
 
 				db, err := sql.Open(driverName, "")
-				if err != nil {
-					t.Fatal(err)
-				}
+				assertNoError(t, err)
 				defer db.Close()
 
-				cs.perform(ctx, db)
+				cs.perform(t, ctx, db)
 				cs.assert(t, conn)
 			})
 		}
@@ -163,37 +203,69 @@ func (m *mockDriverContext) OpenConnector(name string) (driver.Connector, error)
 
 type mockConn struct {
 	driver.Conn
-	execContext  string
-	queryContext string
+	execContext  []string
+	queryContext []string
 }
 
 func (m *mockConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
-	m.queryContext = query
-	return nil, nil
+	m.queryContext = append(m.queryContext, query)
+	return &mockRows{}, nil
 }
 
 func (m *mockConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
-	m.execContext = query
+	m.execContext = append(m.execContext, query)
 	return nil, nil
+}
+
+func (m *mockConn) Begin() (driver.Tx, error) {
+	return &mockTx{}, nil
+}
+
+func (m *mockConn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
+	return &mockTx{}, nil
 }
 
 func (m *mockConn) Close() error {
 	return nil
 }
 
-func (m *mockConn) assertQueryContext(t *testing.T, query string) {
+func (m *mockConn) assertQueryContext(t *testing.T, query string, idx int) {
 	t.Helper()
 
-	if m.queryContext != query {
-		t.Errorf("got '%v', want '%v'", m.queryContext, query)
+	if idx+1 > len(m.queryContext) {
+		t.Errorf("invalid idx '%v' from '%v'", idx, len(m.execContext))
+	}
+
+	for i, q := range m.queryContext {
+		if i == idx {
+			if q != query {
+				t.Errorf("got '%v', want '%v'", m.queryContext, query)
+			}
+		}
 	}
 }
 
-func (m *mockConn) assertExecContext(t *testing.T, query string) {
+func (m *mockConn) assertExecContext(t *testing.T, query string, idx int) {
 	t.Helper()
 
-	if m.execContext != query {
-		t.Errorf("got '%v', want '%v'", m.execContext, query)
+	if idx+1 > len(m.execContext) {
+		t.Errorf("invalid idx '%v' from '%v'", idx, len(m.execContext))
+	}
+
+	for i, q := range m.execContext {
+		if i == idx {
+			if q != query {
+				t.Errorf("got '%v', want '%v'", m.queryContext, query)
+			}
+		}
+	}
+}
+
+func assertNoError(t *testing.T, err error) {
+	t.Helper()
+
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
 	}
 }
 
@@ -216,4 +288,29 @@ type mockDriver struct {
 
 func (m *mockDriver) Open(name string) (driver.Conn, error) {
 	return m.conn, nil
+}
+
+type mockTx struct{}
+
+func (m *mockTx) Commit() error {
+	return nil
+}
+
+func (m *mockTx) Rollback() error {
+	return nil
+}
+
+type mockRows struct {
+}
+
+func (m *mockRows) Columns() []string {
+	return nil
+}
+
+func (m *mockRows) Close() error {
+	return nil
+}
+
+func (m *mockRows) Next(dest []driver.Value) error {
+	return nil
 }
