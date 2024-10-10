@@ -1,3 +1,9 @@
+## v0.4.0
+
+- Use Go 1.23.
+- Switch to GitHub Actions for CI.
+- Bump license year.
+
 ## v0.3.0
 
 - Do not prefix/suffix comment with whitespace.
