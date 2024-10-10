@@ -7,9 +7,9 @@ import (
 
 var (
 	_ driver.Pinger             = (*connection)(nil)
-	_ driver.Execer             = (*connection)(nil)
+	_ driver.Execer             = (*connection)(nil) // nolint:staticcheck
 	_ driver.ExecerContext      = (*connection)(nil)
-	_ driver.Queryer            = (*connection)(nil)
+	_ driver.Queryer            = (*connection)(nil) // nolint:staticcheck
 	_ driver.QueryerContext     = (*connection)(nil)
 	_ driver.Conn               = (*connection)(nil)
 	_ driver.ConnPrepareContext = (*connection)(nil)
@@ -47,7 +47,7 @@ func (c *connection) BeginTx(ctx context.Context, opts driver.TxOptions) (driver
 }
 
 func (c *connection) Query(query string, args []driver.Value) (driver.Rows, error) {
-	queryer, ok := c.Conn.(driver.Queryer)
+	queryer, ok := c.Conn.(driver.Queryer) // nolint:staticcheck
 	if !ok {
 		return nil, driver.ErrSkip
 	}
@@ -63,7 +63,7 @@ func (c *connection) QueryContext(ctx context.Context, query string, args []driv
 }
 
 func (c *connection) Exec(query string, args []driver.Value) (driver.Result, error) {
-	execer, ok := c.Conn.(driver.Execer)
+	execer, ok := c.Conn.(driver.Execer) // nolint:staticcheck
 	if !ok {
 		return nil, driver.ErrSkip
 	}

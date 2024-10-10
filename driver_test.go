@@ -19,7 +19,7 @@ func TestWrapDriver(t *testing.T) {
 		{
 			name: "QueryContext no attrs",
 			perform: func(t *testing.T, ctx context.Context, db *sql.DB) {
-				db.QueryContext(ctx, "SELECT 1")
+				_, _ = db.QueryContext(ctx, "SELECT 1")
 			},
 			assert: func(t *testing.T, conn *mockConn) {
 				conn.assertQueryContext(t, "SELECT 1", 0)
@@ -29,7 +29,7 @@ func TestWrapDriver(t *testing.T) {
 			name:    "QueryContext with attrs",
 			options: []Option{WithAttrPairs("key", "value"), WithAttrPairs("key2", "value 2")},
 			perform: func(t *testing.T, ctx context.Context, db *sql.DB) {
-				db.QueryContext(ctx, "SELECT 1")
+				_, _ = db.QueryContext(ctx, "SELECT 1")
 			},
 			assert: func(t *testing.T, conn *mockConn) {
 				conn.assertQueryContext(t, "SELECT 1 /*key='value',key2='value%202'*/", 0)
@@ -44,7 +44,7 @@ func TestWrapDriver(t *testing.T) {
 				return withUserKey(context.Background(), "my-key")
 			},
 			perform: func(t *testing.T, ctx context.Context, db *sql.DB) {
-				db.QueryContext(ctx, "SELECT 1")
+				_, _ = db.QueryContext(ctx, "SELECT 1")
 			},
 			assert: func(t *testing.T, conn *mockConn) {
 				conn.assertQueryContext(t, "SELECT 1 /*user-key='my-key'*/", 0)
@@ -53,7 +53,7 @@ func TestWrapDriver(t *testing.T) {
 		{
 			name: "ExecContext no attrs",
 			perform: func(t *testing.T, ctx context.Context, db *sql.DB) {
-				db.ExecContext(ctx, "UPDATE users SET name = 'joe'")
+				_, _ = db.ExecContext(ctx, "UPDATE users SET name = 'joe'")
 			},
 			assert: func(t *testing.T, conn *mockConn) {
 				conn.assertExecContext(t, "UPDATE users SET name = 'joe'", 0)
@@ -63,7 +63,7 @@ func TestWrapDriver(t *testing.T) {
 			name:    "ExecContext with attrs",
 			options: []Option{WithAttrPairs("key", "value")},
 			perform: func(t *testing.T, ctx context.Context, db *sql.DB) {
-				db.ExecContext(ctx, "UPDATE users SET name = 'joe'")
+				_, _ = db.ExecContext(ctx, "UPDATE users SET name = 'joe'")
 			},
 			assert: func(t *testing.T, conn *mockConn) {
 				conn.assertExecContext(t, "UPDATE users SET name = 'joe' /*key='value'*/", 0)
@@ -78,7 +78,7 @@ func TestWrapDriver(t *testing.T) {
 				return withUserKey(context.Background(), "my-key")
 			},
 			perform: func(t *testing.T, ctx context.Context, db *sql.DB) {
-				db.ExecContext(ctx, "UPDATE users SET name = 'joe'")
+				_, _ = db.ExecContext(ctx, "UPDATE users SET name = 'joe'")
 			},
 			assert: func(t *testing.T, conn *mockConn) {
 				conn.assertExecContext(t, "UPDATE users SET name = 'joe' /*user-key='my-key'*/", 0)
@@ -95,10 +95,10 @@ func TestWrapDriver(t *testing.T) {
 			perform: func(t *testing.T, ctx context.Context, db *sql.DB) {
 				tx, err := db.Begin()
 				assertNoError(t, err)
-				defer tx.Commit()
+				defer func() { _ = tx.Commit() }()
 
-				tx.QueryContext(ctx, "SELECT 1")
-				tx.QueryContext(ctx, "SELECT 2")
+				_, _ = tx.QueryContext(ctx, "SELECT 1")
+				_, _ = tx.QueryContext(ctx, "SELECT 2")
 			},
 			assert: func(t *testing.T, conn *mockConn) {
 				conn.assertQueryContext(t, "SELECT 1 /*user-key='my-key'*/", 0)
@@ -116,10 +116,10 @@ func TestWrapDriver(t *testing.T) {
 			perform: func(t *testing.T, ctx context.Context, db *sql.DB) {
 				tx, err := db.Begin()
 				assertNoError(t, err)
-				defer tx.Commit()
+				defer func() { _ = tx.Commit() }()
 
-				tx.ExecContext(ctx, "UPDATE users SET name = 'joe'")
-				tx.ExecContext(ctx, "UPDATE users SET name = 'doe'")
+				_, _ = tx.ExecContext(ctx, "UPDATE users SET name = 'joe'")
+				_, _ = tx.ExecContext(ctx, "UPDATE users SET name = 'doe'")
 			},
 			assert: func(t *testing.T, conn *mockConn) {
 				conn.assertExecContext(t, "UPDATE users SET name = 'joe' /*user-key='my-key'*/", 0)
